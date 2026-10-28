@@ -1,127 +1,103 @@
-# Refactoring Project
+# King County House Prices: From Notebook to Production
 
-Use this repository as a **template** for your refactoring project. It walks you through turning a working but messy notebook into clean, reusable Python code: the notebook analyzes King County house sales, and your job is to extract its data cleaning and feature engineering logic into a proper pipeline. Create pull requests in your own copy even if you are working alone, and use them to track your progress.
+This project turns an exploratory Jupyter notebook on King County house sales into clean, tested, reusable Python code, and serves the trained model through a containerized FastAPI service.
 
-## Learning Objectives
+What it covers:
 
-By the end of this repository, you should be able to:
+- **Data preparation and feature engineering** refactored into small, pure functions
+- A **reusable pipeline** (`HousingPipeline`) from raw CSV to model-ready data
+- A **training workflow** (ElasticNet with polynomial features, tuned with 5-fold cross-validation)
+- **31 unit and integration tests** with pytest
+- A **FastAPI** service with CRUD for houses, price prediction from raw house data, and a saved prediction history
+- **Docker Compose** setup running the API and PostgreSQL together
 
-- Read and understand an existing Data Science notebook well enough to refactor it.
-- Refactor data cleaning and feature engineering code into reusable Python functions.
-- Build a pipeline that reproduces a notebook's preprocessing steps end to end.
-- Apply the same refactoring approach to a modeling workflow (stretch goal).
-- Build and containerize a FastAPI CRUD service backed by a database (stretch goal).
+## Results
 
-## Learning Path
-
-| File / Folder | Description |
+| Metric (test set) | Value |
 |---|---|
-| [**Project Description**](project-description.md) | The assignment tasks and stretch goals. |
-| [**King County Notebook**](King-County.ipynb) | The original notebook: EDA, cleaning, feature engineering, and modeling for King County house prices. |
+| R² | 0.844 |
+| Mean absolute error | $94,814 |
 
-### Additional Folders and Files
-
-| File / Folder | Description |
-|---|---|
-| [**data**](data/) | The King County house price dataset used by the notebook. |
-| [**assets**](assets/) | Visual aids referenced in the repository. |
-| [**bonus_solution**](bonus_solution/) | A FastAPI + Postgres + Docker reference implementation for the optional CRUD stretch goal. |
-| [**pyproject.toml**](pyproject.toml) | Project configuration and dependencies. |
-| [**uv.lock**](uv.lock) | Dependency lock file. |
+The API was checked against the trained model on 10 test houses: predictions are identical, which confirms that the API builds features exactly like the training pipeline.
 
 ## Setup
 
-Use [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.5 or newer
-and Python 3.13.17 or a newer 3.13 patch release, as defined in
-[`.python-version`](.python-version).
-
-Rebuild existing Docker images with `--pull --no-cache` after this update
-to refresh their system certificates and dependencies.
-
-> [!NOTE]
-> Throughout these steps, text in angle brackets like `<repo-name>` is a **placeholder**. Replace it, including the `< >` brackets, with your own value. For example, `cd <repo-name>` becomes `cd mle-refactoring-project`.
-
-### 1. Create the Repository from the Template
-
-Click **Use this template** on GitHub.
-
-When creating the repository:
-
-- Set yourself as the **Owner**
-- Choose a repository name
-- Disable **Include all branches**
-- Click **Create repository**
-
-> [!IMPORTANT]
-> If you are working in pairs or groups, only **one person** should complete this step.
-
----
-
-### 2. Add Collaborators (Pairs/Groups Only)
-
-If working with teammates:
-
-1. Open the repository on GitHub
-2. Go to **Settings → Collaborators**
-3. Add your teammates as collaborators
-4. Share the repository link with your team
-
-Teammates should accept the invitation before continuing.
-
----
-
-### 3. Clone the Repository
-
-Copy the SSH URL from the **Code** button on GitHub, then run:
+Requires [uv](https://docs.astral.sh/uv/) 0.13.5+ and Python 3.13.
 
 ```bash
-git clone <copied-ssh-url>
-```
-
-The copied SSH URL will look like `git@github.com:<your-username>/<repo-name>.git`.
-
----
-
-### 4. Move into the Project Folder and Install Dependencies
-
-This installs all dependencies and creates a virtual environment in `.venv/`.
-
-```bash
+git clone <repo-url>
 cd <repo-name>
 uv sync
+cp .env.example .env
 ```
 
----
+## Usage
 
-### 5. Open the Repository in VS Code
-
-> [!NOTE]
-> Make sure you open VS Code from the project root so it automatically detects the environment created by `uv sync`.
-
-Launch VS Code in the project root folder:
+**Prepare the data**
 
 ```bash
-code .
+uv run python -m src.king_county.pipeline
 ```
 
-Then open [King-County.ipynb](King-County.ipynb) and select the Python environment created by `uv sync` as the kernel.
+Writes `data/King_County_House_prices_processed.csv`.
 
-## How to Use This Repo
+**Train the model**
 
-1. Read the assignment brief in [project-description.md](project-description.md).
-2. Work through the notebook in [King-County.ipynb](King-County.ipynb).
-3. Refactor the cleaning and feature engineering logic into Python files.
-4. Build a reusable pipeline.
-5. If you want an extra challenge, extend your refactor to cover the modeling step as well.
-6. If you want to go even further, use [bonus_solution/](bonus_solution/) as a reference for the optional FastAPI + Docker stretch goal.
+```bash
+uv run python -m src.king_county.modeling
+```
 
-## Bonus Solution
+Prints the best parameters and test results, and saves `model/model.bin` and `model/waterfront_locations.csv`.
 
-The [bonus_solution/](bonus_solution/) folder contains a minimal working example of:
+**Run the tests**
 
-- a FastAPI CRUD API
-- Postgres persistence
-- a `Dockerfile` for the API
-- a `docker-compose.yaml` file to run the API and database together
+```bash
+uv run python -m pytest -q tests
+```
 
-It is included as a reference implementation for the optional stretch task, not as a required project structure.
+**Run the API with Docker**
+
+```bash
+docker compose up --build
+```
+
+Then open http://localhost:8000/docs.
+
+## API
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | Health check |
+| `POST` | `/houses` | Create a house (5 features) |
+| `GET` | `/houses` | List all houses |
+| `GET` | `/houses/{id}` | Get one house |
+| `PUT` | `/houses/{id}` | Update a house |
+| `DELETE` | `/houses/{id}` | Delete a house |
+| `POST` | `/predict` | Predict a price from raw house data and save the prediction |
+| `GET` | `/predictions` | List saved predictions, newest first |
+
+`/predict` takes the raw house fields (for example `yr_built`, `yr_renovated`, `lat`, `long`) and computes `sqft_basement`, `last_known_change`, `center_distance`, and `water_distance` with the same functions used in training.
+
+Example request:
+
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"bedrooms": 3, "bathrooms": 2.0, "sqft_living": 1800, "sqft_lot": 5000,
+       "floors": 1.0, "waterfront": 0, "view": 0, "condition": 3, "grade": 7,
+       "sqft_above": 1400, "zipcode": 98103, "lat": 47.6, "long": -122.3,
+       "sqft_living15": 1700, "sqft_lot15": 5000, "yr_built": 1960, "yr_renovated": 0}'
+```
+
+
+## Project Questions
+
+**What steps did you take to complete the project?**
+I reviewed the notebook and separated exploration from stable transformation rules. I turned each cleaning and feature step into a function, moved them into `src/king_county/`, and built `HousingPipeline`. I then refactored the modeling step, wrote unit and integration tests, built the FastAPI CRUD app, containerized it with Docker Compose, and extended it with a prediction endpoint and prediction history.
+
+**What challenges did you face?**
+Finding a general rule for the bedroom outlier instead of a hard-coded row. Making `water_distance` work for a single house, which required saving the waterfront reference locations at training time. Keeping the API's feature computation identical to training. 
+
+**What would you do differently with more time?**
+Improve the model: predict `log(price)`, treat `zipcode` as categorical, and try tree-based models such as XGBoost or LightGBM. Keep `yr_built` alongside `last_known_change`, since merging them loses information. Add CI to run the tests on every push, and track model performance over time using the saved predictions.
+
