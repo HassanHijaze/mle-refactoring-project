@@ -1,4 +1,4 @@
-"""Database configuration for the FastAPI bonus solution."""
+"""Database connection and request-scoped sessions."""
 
 import os
 from collections.abc import Generator
@@ -19,7 +19,7 @@ SessionLocal = sessionmaker(bind=engine)
 
 
 class Base(DeclarativeBase):
-    """Base class shared by the app's SQLAlchemy models."""
+    """Base class shared by the service's SQLAlchemy models."""
 
 
 def get_db() -> Generator[Session]:

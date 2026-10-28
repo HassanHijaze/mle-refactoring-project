@@ -170,4 +170,7 @@ cython_debug/
 Thumbs.db
 
 # Model files
-model/
+model/.env
+*.db
+__pycache__/
+data/King_County_House_prices_processed.csv

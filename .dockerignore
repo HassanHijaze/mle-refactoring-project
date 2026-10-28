@@ -1,0 +1,11 @@
+# Send only what the API image needs to the Docker build.
+*
+!pyproject.toml
+!uv.lock
+!src/
+!src/**/*.py
+!service/
+!service/**/*.py
+!model/
+!model/model.bin
+!model/waterfront_locations.csv
