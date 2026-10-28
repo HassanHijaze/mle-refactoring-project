@@ -18,11 +18,8 @@ What it covers:
 | R² | 0.844 |
 | Mean absolute error | $94,814 |
 
-The API was checked against the trained model on 10 test houses: predictions are identical, which confirms that the API builds features exactly like the training pipeline.
 
 ## Setup
-
-Requires [uv](https://docs.astral.sh/uv/) 0.13.5+ and Python 3.13.
 
 ```bash
 git clone <repo-url>
